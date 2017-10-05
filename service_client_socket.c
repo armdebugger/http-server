@@ -52,6 +52,7 @@ int service_client_socket(const int s, const char * const tag) {
 			printf("echoed %d bytes back to %s, \"%s\"\n", bytes, tag, buffer);
 		#endif
 
+		}
 		/* if bytes < 0 something went wrong */
 			if (bytes != 0) {
 				perror("read");
@@ -61,6 +62,4 @@ int service_client_socket(const int s, const char * const tag) {
 		printf("connection from %s closed\n", tag);
 		close(s);
 		return 0;
-	}
-
 }

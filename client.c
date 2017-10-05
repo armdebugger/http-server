@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 	memset(&hints, '\0', sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM; /* set type as a stream */
-	res = getaddrinfo(argv[1], argv[2], gai_strerror(res));
+	res = getaddrinfo(argv[1], argv[2], &hints, &results);
 
 	/* if the client can't find the server */
 	if (res != 0) {
