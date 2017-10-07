@@ -15,6 +15,7 @@
 #include "service_listen_socket.h"
 
 int get_listen_socket(const int port) {
+	
 	fprintf(stderr, "binding to port %d\n", port);
 
 	/* struct to hold an address, presumably this is defined somewhere */
@@ -25,5 +26,37 @@ int get_listen_socket(const int port) {
 	my_address.sin6_family = AF_INET6;		// ipv6 address
 	my_address.sin6_addr = in6addr_any;		// all interfaces
 	my_address.sin6_port = htons(port);		// network order, historical reasons
+
+	/* get a socket for listening */
+	int s = socket(PF_INET6, SOCK_STREAM, 0);
+
+	/* can't get a socket, return -1 */
+	if (s < 0) {
+		perror("socket");
+		return -1;
+	}
+
+	const int one = 1;
+
+	/* a 'nice to have', not essential so don't exit */
+	if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)) != 0){
+		perror("setsocket");
+	}
+
+	/* binding the address to the socket*/
+	if (bind(s, (struct sockaddr *) &my_address, sizeof(my_address)) != 0) {
+		perror("bind");
+		return -1;
+	}
+
+	/* set the socket as listening for messages, 5 is the 'backlog' that nobody really understands*/
+	if (listen(s, 5) != 0) {
+		perror("listen");
+		return -1;
+	}
+
+	/* return our shiny new socket */
+	return s;
+
 
 }
