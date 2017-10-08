@@ -46,20 +46,21 @@ int service_client_socket(const int s, const char * const tag) {
 			}
 		}
 
-		#if (__SIZE_WIDTH__ == 64 || __SIZEOF_POINTER__ == 8)
-			printf("echoed %ld bytes back to %s, \"%s\"\n", bytes, tag, buffer);
-		#else
-			printf("echoed %d bytes back to %s, \"%s\"\n", bytes, tag, buffer);
-		#endif
+#if (__SIZE_WIDTH__ == 64 || __SIZEOF_POINTER__ == 8)
+		printf("echoed %ld bytes back to %s, \"%s\"\n", bytes, tag, buffer);
+#else
+		printf("echoed %d bytes back to %s, \"%s\"\n", bytes, tag, buffer);
+#endif
+	}
 
-		}
-		/* if bytes < 0 something went wrong */
-			if (bytes != 0) {
-				perror("read");
-				return -1;
-		}
+	/* if bytes < 0 something went wrong */
+	if (bytes != 0) {
+		perror("read");
+		return -1;
+	}
 
-		printf("connection from %s closed\n", tag);
-		close(s);
-		return 0;
+	printf("connection from %s closed\n", tag);
+	close(s);
+	return 0;
+
 }
