@@ -117,12 +117,14 @@
     <ClCompile Include="make_printable_address.c" />
     <ClCompile Include="service_client_socket.c" />
     <ClCompile Include="service_listen_socket.c" />
+    <ClCompile Include="service_listen_socket_multithread.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="get_listen_socket.h" />
     <ClInclude Include="make_printable_address.h" />
     <ClInclude Include="service_client_socket.h" />
     <ClInclude Include="service_listen_socket.h" />
+    <ClInclude Include="service_listen_socket_multithread.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

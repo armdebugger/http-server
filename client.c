@@ -125,4 +125,40 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	/* if not connected fail */
+	if (phase != cs_connected) {
+		perror(cs_name[phase]);
+		exit(1);
+	}
+
+	fprintf(stderr, "connected\n");
+
+	/* make threads for sending and receiving*/
+	pthread_t send_thread, receive_thread;
+
+	fdpair_t *send = malloc(sizeof(fdpair_t));
+	fdpair_t *receive = malloc(sizeof(fdpair_t));
+
+	if (send == 0 || receive == 0) {
+		perror("malloc");
+		exit(1);
+	}
+
+	send->from = 0;
+	send->to = s;
+	send->shutdown_on_eof = 1;
+
+	receive->from = s;
+	receive->to = s;
+	send->shutdown_on_eof = 0;
+
+	if (pthread_create(&send_thread, 0, &copy_stream, send) != 0 ||
+		pthread_create(&receive_thread, 0, &copy_stream, receive) != 0) {
+		perror("pthread_create");
+		exit(1);
+	}
+
+	(void) pthread_join(send_thread, 0);
+	(void)pthread_join(receive_thread, 0);
+
 }
