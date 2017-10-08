@@ -71,7 +71,6 @@ static void * copy_stream(void *data) {
 			}
 		}
 	}
-
 	trace_print("%d->%d exiting\n", fdpair->from, fdpair->to);
 
 	pthread_exit(0);
