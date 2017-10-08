@@ -132,6 +132,7 @@ int main(int argc, char **argv) {
 
 	fprintf(stderr, "connected\n");
 
+	/* make threads for sending and receiving*/
 	pthread_t send_thread, receive_thread;
 
 	fdpair_t *send = malloc(sizeof(fdpair_t));
@@ -147,16 +148,15 @@ int main(int argc, char **argv) {
 	send->shutdown_on_eof = 1;
 
 	receive->from = s;
-	receive->to = 1;
-	receive->shutdown_on_eof = 0;
+	receive->to = s;
+	send->shutdown_on_eof = 0;
 
-	if (pthread_create(&send_thread, 0, &copy_stream, send) != 0 ||
-		pthread_create(&receive_thread, 0, &copy_stream, receive) != 0) {
-		perror("pthread_create");
-		exit(1);
+	if (pthread_create (&send_thread, 0, &copy_stream, send) != 0 || pthread_create (&receive_thread, 0, &copy_stream, receive) != 0) {
+		perror ("pthread_create");
+		exit (1);
 	}
 
-	(void)pthread_join(send_thread, 0);
+	(void) pthread_join(send_thread, 0);
 	(void)pthread_join(receive_thread, 0);
 
 }
