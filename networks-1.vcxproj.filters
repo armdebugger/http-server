@@ -21,9 +21,30 @@
     <ClCompile Include="main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="service_listen_socket.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="make_printable_address.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="service_client_socket.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="client.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="get_listen_socket.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="service_listen_socket.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="make_printable_address.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="service_client_socket.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
