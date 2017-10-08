@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
 
 	/* check we have two arguments */
 	if (argc != 2) {
-		fprintf(stderr, "%s: usage is &s port\n", myname, myname);
+		fprintf(stderr, "%s: usage is %s port\n", myname, myname);
 		exit(1);
 	}
 
