@@ -27,8 +27,8 @@ int service_client_socket (const int s, const char *const tag) {
   /* repeatedly read a buffer load of bytes, leaving room for the
      terminating NUL we want to add to make using printf() possible */
 	while ((bytes = read (s, buffer, buffer_size - 1)) > 0) {
-    
-		printf("receivted %s from client", bytes);
+
+		printf("receivted %s from client", buffer);
 
 		/* this code is not quite complete: a write can in this context be
 			partial and return 0<x<bytes.  realistically you don't need to
