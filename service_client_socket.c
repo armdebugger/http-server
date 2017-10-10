@@ -18,6 +18,11 @@
 /* why can I not use const size_t here? */
 #define buffer_size 1024
 
+typedef enum method{
+	GET = 0,
+	HEAD = 1
+} method;
+
 int service_client_socket (const int s, const char *const tag) {
 	char buffer[buffer_size];
 	size_t bytes;
@@ -27,8 +32,6 @@ int service_client_socket (const int s, const char *const tag) {
   /* repeatedly read a buffer load of bytes, leaving room for the
      terminating NUL we want to add to make using printf() possible */
 	while ((bytes = read (s, buffer, buffer_size - 1)) > 0) {
-
-		printf("receivted %s from client", buffer);
 
 		/* this code is not quite complete: a write can in this context be
 			partial and return 0<x<bytes.  realistically you don't need to
@@ -53,13 +56,52 @@ int service_client_socket (const int s, const char *const tag) {
 				strcpy (buffer + bytes - 1, ".");
 			}
 		}
-    
-#if (__SIZE_WIDTH__ == 64 || __SIZEOF_POINTER__ == 8)
-    printf ("echoed %ld bytes back to %s, \"%s\"\n", bytes, tag, buffer);
-#else
-    printf ("echoed %d bytes back to %s, \"%s\"\n", bytes, tag, buffer);
-#endif
+
+		char *space = strchr(buffer, ' ');
+		size_t method_len = 0;	
+
+		if(space == NULL){
+			if(write(s, "fail\n", 5) != 5){
+				perror("write");
+				return -1;
+			}
+		} else {
+				method_len = space - buffer;
+
+			char *method = malloc(method_len * sizeof(char*));
+
+			for(int i = 0; i < method_len; i++){
+				method[i] = buffer[i];
+			}
+
+			enum method meth;
+
+			if(strcmp(method, "GET") == 0){
+				meth = GET;
+			} else {
+				meth = HEAD;
+			}
+
+			char * return_method = malloc(sizeof(char*) * (14 + method_len));
+			strcpy(return_method, "HTTP method: ");
+			strcat(return_method, method);		
+			strcat(return_method, "\n");
+
+			printf("%s", return_method);
+
+			if(write(s, return_method, 14 + method_len) != 14 + method_len){
+				perror("write");
+				return -1;
+			}
+			
+		
+	#if (__SIZE_WIDTH__ == 64 || __SIZEOF_POINTER__ == 8)
+		printf ("echoed %ld bytes back to %s, \"%s\"\n", bytes, tag, buffer);
+	#else
+		printf ("echoed %d bytes back to %s, \"%s\"\n", bytes, tag, buffer);
+	#endif
 	}
+}
   
 	/* bytes == 0: orderly close; bytes < 0: something went wrong */
 	if (bytes != 0) {
