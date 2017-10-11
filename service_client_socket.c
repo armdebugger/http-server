@@ -51,6 +51,8 @@ int service_client_socket (const int s, const char *const tag) {
 		size_t request_method_name_len = 0;	
 		char *request_uri = NULL;
 		size_t request_uri_len = 0;
+		char *http_version = NULL;
+		size_t http_version_len = 0;
 
 		/* find the first space, the end of the request method */
 		char *space = strchr(buffer, ' ');
@@ -66,16 +68,16 @@ int service_client_socket (const int s, const char *const tag) {
 			/* get the length of the method name, extract */
 			request_method_name_len = space - buffer;
 			
+			/* check malloc didn't break */
 			if(extract(&request_method_name, request_method_name_len, buffer) == -1){
 				perror("malloc");
 				return -1;
 			}
 
-			//request_method_name = malloc(request_method_name_len * sizeof(char*));
-			//strncpy(request_method_name, buffer, request_method_name_len);
-
+			/* find the next element (uri) */
 			char *space = strchr(buffer + request_method_name_len + 1, ' ');
 			
+			/* if there's no more info, bad request */
 			if(space == NULL){
 				if(write(s, "400", 3) != 3){
 					perror("write");
@@ -83,24 +85,45 @@ int service_client_socket (const int s, const char *const tag) {
 				}			
 			} else {
 
-				/* get the length of the uri, malloc and copy */
+				/* get the length of the uri, extract */
 				request_uri_len = space - buffer - request_method_name_len - 1;				
-				//request_uri = malloc(request_uri_len * sizeof(char*));
-				//strncpy(request_uri, buffer + request_method_name_len + 1, request_uri_len);
 				
+				/* check malloc didn't break */
 				if(extract(&request_uri, request_uri_len, buffer + request_method_name_len + 1) == -1){
 					perror("malloc");
 					return -1;
 				}
 
+				/* null should redirect to index */
 				if(strcmp(request_uri, "/") == 0){
 					strcpy(request_uri, "/index.html");
+				}
+
+				/* find the next element (version) */
+				char *space = strchr(buffer + request_uri_len + 1, '\n');
+
+				if(space == NULL){
+					if(write(s, "400", 3) != 3){
+						perror("write");
+						return -1;
+					}
+				} else {
+					
+					http_version_len = space - buffer - request_uri_len - 4;
+					
+					/* check malloc didn't break */
+					if(extract(&http_version, http_version_len, buffer + request_uri_len + request_method_name_len + 2) == -1){
+						perror("malloc");
+						return -1;
+					}
 				}
 			}
 		}
 	
+		/* print as debugging for now */
 		printf("request_method_name: %s\n", request_method_name);
 		printf("request_uri: %s\n", request_uri);
+		printf("http_version: %s\n", http_version);
 	
 	}
   
