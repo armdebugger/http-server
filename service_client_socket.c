@@ -18,10 +18,19 @@
 /* why can I not use const size_t here? */
 #define buffer_size 1024
 
-typedef enum request_method_name{
-	GET = 0,
-	HEAD = 1
-} request_method_name;
+/* extract a section from a buffer of length len and copy into the string pointer pointed to by string */
+int extract(char **string, size_t len, char *buffer){
+	
+	*string = malloc(len * sizeof(char*));
+
+	if(string == NULL){
+		return -1;
+	}
+
+	strncpy(*string, buffer, len);
+
+	return 0;
+}
 
 int service_client_socket (const int s, const char *const tag) {
 	char buffer[buffer_size];
@@ -38,9 +47,9 @@ int service_client_socket (const int s, const char *const tag) {
 		printf("\nrequest received:\n%s", buffer);
 
 		/* variables for http fields and headers */
-		char *request_method_name;
+		char *request_method_name = NULL;
 		size_t request_method_name_len = 0;	
-		char *request_uri;
+		char *request_uri = NULL;
 		size_t request_uri_len = 0;
 
 		/* find the first space, the end of the request method */
@@ -48,43 +57,52 @@ int service_client_socket (const int s, const char *const tag) {
 
 		/* if there's no space fail */
 		if(space == NULL){
-			if(write(s, "fail\n", 5) != 5){
+			if(write(s, "400", 3) != 3){
 				perror("write");
 				return -1;
 			}
 		} else {
 				
-			/* get the length of the method name and malloc */
+			/* get the length of the method name, extract */
 			request_method_name_len = space - buffer;
-			request_method_name = malloc(request_method_name_len * sizeof(char*));
+			
+			if(extract(&request_method_name, request_method_name_len, buffer) == -1){
+				perror("malloc");
+				return -1;
+			}
 
-			strncpy(request_method_name, buffer, request_method_name_len);
-
-			printf("request_method_name: %s\n", request_method_name);
+			//request_method_name = malloc(request_method_name_len * sizeof(char*));
+			//strncpy(request_method_name, buffer, request_method_name_len);
 
 			char *space = strchr(buffer + request_method_name_len + 1, ' ');
 			
 			if(space == NULL){
-				if(write(s, "fail\n", 5) != 5){
+				if(write(s, "400", 3) != 3){
 					perror("write");
 					return -1;
 				}			
 			} else {
-				request_uri_len = space - buffer - request_method_name_len;
-				
-				request_uri = malloc(request_uri_len * sizeof(char*));
-				
-				strncpy(request_uri, buffer + request_method_name_len + 1, request_uri_len);
-					
-				char * return_request_uri = malloc(sizeof(char*) * (14 + request_uri_len));
-				strcpy(return_request_uri, "request_uri: ");
-				strcat(return_request_uri, request_uri);		
-				strcat(return_request_uri, "\n");
 
-				printf("%s", return_request_uri);
+				/* get the length of the uri, malloc and copy */
+				request_uri_len = space - buffer - request_method_name_len - 1;				
+				//request_uri = malloc(request_uri_len * sizeof(char*));
+				//strncpy(request_uri, buffer + request_method_name_len + 1, request_uri_len);
+				
+				if(extract(&request_uri, request_uri_len, buffer + request_method_name_len + 1) == -1){
+					perror("malloc");
+					return -1;
+				}
+
+				if(strcmp(request_uri, "/") == 0){
+					strcpy(request_uri, "/index.html");
+				}
+			}
 		}
+	
+		printf("request_method_name: %s\n", request_method_name);
+		printf("request_uri: %s\n", request_uri);
+	
 	}
-}
   
 	/* bytes == 0: orderly close; bytes < 0: something went wrong */
 	if (bytes != 0) {
