@@ -100,7 +100,7 @@ int service_client_socket (const int s, const char *const tag) {
 				}
 
 				/* find the next element (version) */
-				char *space = strchr(buffer + request_uri_len + 1, '\n');
+				char *space = strchr(buffer + request_uri_len + 2, '\n');
 
 				if(space == NULL){
 					if(write(s, "400", 3) != 3){
@@ -116,14 +116,33 @@ int service_client_socket (const int s, const char *const tag) {
 						perror("malloc");
 						return -1;
 					}
+
+				
+					/* workaround because the newline messes up my code */
+					for(int i = 0; i < strlen(http_version) + 1; i++){
+						if(http_version[i] == '\n'){								
+							http_version[i-1] = '\0';
+						}
+					}
 				}
 			}
 		}
-	
+
 		/* print as debugging for now */
 		printf("request_method_name: %s\n", request_method_name);
 		printf("request_uri: %s\n", request_uri);
 		printf("http_version: %s\n", http_version);
+
+		char return_message[100];
+		strcpy(return_message, http_version);
+		strcat(return_message, " 404 Not Found");
+
+		printf("%s\n", return_message);
+
+		if(write(s, return_message, strlen(return_message) + 1) != strlen(return_message) + 1){
+			perror("write");
+			return -1;
+		}
 	
 	}
   
