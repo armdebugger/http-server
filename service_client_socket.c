@@ -165,6 +165,7 @@ int service_client_socket (const int s, const char *const tag) {
 			/* trim the first slash off the uri so we have the file */
 			file_name = malloc(sizeof(char*) * strlen(request_uri));
 			strcpy(file_name, &request_uri[1]);
+			file_name[request_uri_len - 1] = '\0';
 
 			char *ext;
 			ext = strchr(file_name, '.');
