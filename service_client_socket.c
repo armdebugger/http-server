@@ -134,6 +134,7 @@ int service_client_socket (const int s, const char *const tag) {
 		char *response_code;
 		char *content;
 		char *file_name;
+		char *content_type;
 		char content_length[12];
 
 		if(bad_request == 1){
@@ -164,8 +165,9 @@ int service_client_socket (const int s, const char *const tag) {
 
 			/* trim the first slash off the uri so we have the file */
 			file_name = malloc(sizeof(char*) * strlen(request_uri));
+
 			strcpy(file_name, &request_uri[1]);
-			file_name[request_uri_len - 1] = '\0';
+			file_name[strlen(request_uri) - 1] = '\0';
 
 			char *ext;
 			ext = strchr(file_name, '.');
@@ -173,13 +175,16 @@ int service_client_socket (const int s, const char *const tag) {
 			if(!ext){
 				ext = malloc(sizeof(char*) * 6);
 				strcpy(ext, ".html");
-				printf("%zu\n", strlen(file_name));
 				strcat(file_name, ".html");
-				printf("%s\n", file_name);
 			}
 
-			printf("%s\n", ext);
-			printf("%s\n", file_name);
+			if(strcmp(ext, ".html") == 0){
+				content_type = malloc(sizeof(char*) * 10);
+				strcpy(content_type, "text/html");
+			} else if (strcmp(ext, ".jpg") == 0){
+				content_type = malloc(sizeof(char*) * 11);
+				strcpy(content_type, "image/jpeg");
+			}
 
 			FILE *file;
 			file = fopen(file_name, "r");
@@ -245,7 +250,7 @@ int service_client_socket (const int s, const char *const tag) {
 		}
 		
 
-		return_message = malloc(sizeof(char*) * (92 + strlen(http_version) + strlen(response_code) + strlen(content_length) + strlen(content)));
+		return_message = malloc(sizeof(char*) * (83 + strlen(content_type) + strlen(http_version) + strlen(response_code) + strlen(content_length) + strlen(content)));
 
 		if(!return_message){
 			free(request_method_name);
@@ -263,7 +268,10 @@ int service_client_socket (const int s, const char *const tag) {
 		strcat(return_message, response_code);
 		strcat(return_message, "\r\nDate: Sun, 15 Oct 2017 14:44:34 GMT\r\nContent-Length: ");
 		strcat(return_message, content_length);
-		strcat(return_message, "\r\nContent-Type: text/html\r\n\r\n");
+		//strcat(return_message, "\r\nContent-Type: text/html\r\n\r\n");
+		strcat(return_message, "\r\nContent-Type: ");
+		strcat(return_message, content_type);
+		strcat(return_message, "\r\n\r\n");
 
 		strcat(return_message, content);
 
