@@ -268,19 +268,17 @@ int service_client_socket (const int s, const char *const tag) {
 		strcat(return_message, response_code);
 		strcat(return_message, "\r\nDate: Sun, 15 Oct 2017 14:44:34 GMT\r\nContent-Length: ");
 		strcat(return_message, content_length);
-		//strcat(return_message, "\r\nContent-Type: text/html\r\n\r\n");
 		strcat(return_message, "\r\nContent-Type: ");
 		strcat(return_message, content_type);
 		strcat(return_message, "\r\n\r\n");
 
 		strcat(return_message, content);
 
-		printf("%s\n", return_message);
+		printf("response:\n%s\n", return_message);
 
 		write(s, return_message, strlen(return_message) + 1);
 
-		if(write(s, return_message, strlen(return_message) + 1) != strlen(return_message) + 1){
-			printf("what");			
+		if(write(s, return_message, strlen(return_message) + 1) != strlen(return_message) + 1){			
 			perror("write");
 			return -1;
 		}
