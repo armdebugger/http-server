@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <time.h>
 
 #include <memory.h>
 #include <string.h>
@@ -35,6 +36,9 @@ int extract(char **string, size_t len, char *buffer){
 int service_client_socket (const int s, const char *const tag) {
 	char buffer[buffer_size];
 	size_t bytes;
+
+	//time_t t = time(NULL);
+	//struct tm tm = *localtime(&t);
 
   printf ("new connection from %s\n", tag);
 
@@ -131,18 +135,35 @@ int service_client_socket (const int s, const char *const tag) {
 		/* print as debugging for now */
 		printf("request_method_name: %s\n", request_method_name);
 		printf("request_uri: %s\n", request_uri);
-		printf("http_version: %s\n", http_version);
+		printf("http_version: %s\n\n", http_version);
 
-		char return_message[100];
+		
+
+		char return_message[300];
+		char response_code[20];
+		char content[1000];
+		char content_length[10];
+
+		//strcpy(return_message, http_version);
 		strcpy(return_message, http_version);
-		strcat(return_message, " 404 Not Found");
+		strcat(return_message, " ");
+		strcat(return_message, response_code);
+		strcat(return_message, "\r\nDate: Sun, 15 Oct 2017 14:44:34 GMT\r\nContent-Length: ");
+		strcat(return_message, content_length);
+		strcat(return_message, "\r\nContent-Type: text/html\r\n\r\n");
+
+		strcat(return_message, content);
 
 		printf("%s\n", return_message);
 
+		write(s, return_message, strlen(return_message) + 1);
+
 		if(write(s, return_message, strlen(return_message) + 1) != strlen(return_message) + 1){
+			printf("what");			
 			perror("write");
 			return -1;
 		}
+
 	
 	}
   
