@@ -22,13 +22,13 @@
 /* extract a section from a buffer of length len and copy into the string pointer pointed to by string */
 int extract(char **string, size_t len, char *buffer){
 	
-	*string = malloc(len * sizeof(char*));
+	*string = malloc((len + 1) * sizeof(char*));
 
 	if(string == NULL){
 		return -1;
 	}
 
-	strncpy(*string, buffer, len);
+	snprintf(*string, len + 1, "%s", buffer);
 
 	return 0;
 }
@@ -97,7 +97,7 @@ int service_client_socket (const int s, const char *const tag) {
 
 				/* null should redirect to index */
 				if(strcmp(request_uri, "/") == 0){
-					strcpy(request_uri, "/index.html");
+					sprintf(request_uri, "/index.html");
 				}
 
 				/* find the next element (version) */
@@ -152,8 +152,8 @@ int service_client_socket (const int s, const char *const tag) {
 				return -1;
 			}
 
-			strcpy(response_code, "400 Bad Request");
-			strcpy(content, "<h1>400 Bad Request</h1>");
+			snprintf(response_code, 16, "400 Bad Request");
+			snprintf(content, 24, "<h1>400 Bad Request</h1>");
 			sprintf(content_length, "%i", 24);
 
 		} else {
@@ -166,7 +166,7 @@ int service_client_socket (const int s, const char *const tag) {
 			/* trim the first slash off the uri so we have the file */
 			file_name = malloc(sizeof(char*) * strlen(request_uri));
 
-			strcpy(file_name, &request_uri[1]);
+			sprintf(file_name, "%s", &request_uri[1]);
 			file_name[strlen(request_uri) - 1] = '\0';
 
 			char *ext;
@@ -174,33 +174,82 @@ int service_client_socket (const int s, const char *const tag) {
 
 			if(!ext){
 				ext = malloc(sizeof(char*) * 6);
-				strcpy(ext, ".html");
+				snprintf(ext, 6, ".html");
 				strcat(file_name, ".html");
 			}
 
 			if(strcmp(ext, ".html") == 0){
 				content_type = malloc(sizeof(char*) * 10);
-				strcpy(content_type, "text/html");
+				snprintf(content_type, 10, "text/html");
 			} else if (strcmp(ext, ".jpg") == 0){
 				content_type = malloc(sizeof(char*) * 11);
-				strcpy(content_type, "image/jpeg");
+				snprintf(content_type, 11, "image/jpeg");
 			}
 
 			FILE *file;
-			file = fopen(file_name, "r");
+
+			if(strcmp(content_type, "text/html")){
+				file = fopen(file_name, "r");
+			} else {
+				file = fopen(file_name, "rb");
+			}
 		
+			long size = 0;
+
 			if(file){
 
-				long size;
+				if(fseek(file, 0L, SEEK_END) == 0){
+					
+					size = ftell(file);
 
-				fseek(file, 0L, SEEK_END);
-				size = ftell(file);
-				rewind(file);
+					if(size == -1){
+						fclose(file);					
+						free(request_method_name);
+						free(request_uri);			
+						free(http_version);
+						perror("content size");
+						return -1;
+					}
 
-				content = malloc(sizeof(char*) * (size + 1));
+					content = malloc(sizeof(char*) * (size + 1));
+
+					if(!content){
+						fclose(file);					
+						free(request_method_name);
+						free(request_uri);			
+						free(http_version);
+						perror("malloc");
+						return -1;
+					}
+				
+					if(fseek(file, 0L, SEEK_SET != 0)){
+						fclose(file);					
+						free(request_method_name);
+						free(request_uri);			
+						free(http_version);
+						free(content);
+						perror("content size");
+						return -1;
+					}
+
+					size_t len = fread(content, sizeof(char), size, file);
+
+					if(ferror(file) != 0){
+						fclose(file);					
+						free(request_method_name);
+						free(request_uri);			
+						free(http_version);
+						free(content);
+						perror("reading file");
+						return -1;
+					} else {
+						content[len++] = '\0';
+					}
+				}
+
 				response_code = malloc(sizeof(char*) * 7);
 
-				if(!response_code || !content){
+				if(!response_code){
 					fclose(file);					
 					free(response_code);
 					free(content);
@@ -211,23 +260,10 @@ int service_client_socket (const int s, const char *const tag) {
 					return -1;
 				}
 
-				if(fread(content, size, 1, file) != 1){
-					fclose(file);					
-					free(response_code);
-					free(content);
-					free(request_method_name);
-					free(request_uri);			
-					free(http_version);
-					perror("read");
-					return -1;
-				}
-
 				fclose(file);
-				strcpy(response_code, "200 OK");
+				sprintf(response_code, "200 OK");
 				sprintf(content_length, "%lu", size + 1);
-								
-
-
+			
 			} else {
 
 				response_code = malloc(sizeof(char*) * 14);
@@ -243,13 +279,13 @@ int service_client_socket (const int s, const char *const tag) {
 					return -1;
 				}
 
-				strcpy(response_code, "404 Not Found");
-				strcpy(content, "<h1>404 Not Found</h1>");
+				sprintf(response_code, "404 Not Found");
+				sprintf(content, "<h1>404 Not Found</h1>");
 				sprintf(content_length, "%i", 23);
 			}
 		}
 		
-
+		//return_message = malloc(2000);
 		return_message = malloc(sizeof(char*) * (83 + strlen(content_type) + strlen(http_version) + strlen(response_code) + strlen(content_length) + strlen(content)));
 
 		if(!return_message){
@@ -263,16 +299,8 @@ int service_client_socket (const int s, const char *const tag) {
 			return -1;
 		}
 
-		strcpy(return_message, http_version);
-		strcat(return_message, " ");
-		strcat(return_message, response_code);
-		strcat(return_message, "\r\nDate: Sun, 15 Oct 2017 14:44:34 GMT\r\nContent-Length: ");
-		strcat(return_message, content_length);
-		strcat(return_message, "\r\nContent-Type: ");
-		strcat(return_message, content_type);
-		strcat(return_message, "\r\n\r\n");
 
-		strcat(return_message, content);
+		sprintf(return_message, "%s %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n%s", http_version, response_code, content_length, content_type, content);
 
 		printf("response:\n%s\n", return_message);
 
@@ -284,10 +312,9 @@ int service_client_socket (const int s, const char *const tag) {
 		}
 		
 		free(request_method_name);
-		//free(request_uri);			
+		free(request_uri);			
 		//free(http_version);
 		//free(response_code);
-		//free(content_length);
 		//free(content);
 		//free(return_message);
 		//free(file_name);

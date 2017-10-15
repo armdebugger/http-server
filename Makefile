@@ -3,7 +3,7 @@ hosts=mail.batten.eu.org pi-one.home.batten.eu.org gromit.cs.bham.ac.uk offsite8
 OS=$(shell uname -s)
 ZIP=socket
 
-CFLAGS=-Wall -Werror -std=gnu99
+CFLAGS=-Wall -Werror -std=gnu99 -g
 # needlessly included for single-thread case: hardly a crime
 LIBS=-lpthread
 ifeq ($(OS), SunOS)
