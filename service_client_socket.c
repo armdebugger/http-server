@@ -188,7 +188,7 @@ int service_client_socket (const int s, const char *const tag) {
 
 			FILE *file;
 
-			if(strcmp(content_type, "text/html")){
+			if(strcmp(content_type, "text/html") == 0){
 				file = fopen(file_name, "r");
 			} else {
 				file = fopen(file_name, "rb");
@@ -286,7 +286,7 @@ int service_client_socket (const int s, const char *const tag) {
 		}
 		
 		//return_message = malloc(2000);
-		return_message = malloc(sizeof(char*) * (83 + strlen(content_type) + strlen(http_version) + strlen(response_code) + strlen(content_length) + strlen(content)));
+		return_message = malloc(sizeof(char*) * (39 + strlen(content_type) + strlen(http_version) + strlen(response_code) + strlen(content_length) + strlen(content)));
 
 		if(!return_message){
 			free(request_method_name);
