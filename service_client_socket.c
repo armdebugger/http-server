@@ -135,7 +135,7 @@ int service_client_socket (const int s, const char *const tag) {
 		char *content;
 		char *file_name;
 		char *content_type;
-		char content_length[12];
+		size_t content_length;
 
 		if(bad_request == 1){
 
@@ -154,7 +154,7 @@ int service_client_socket (const int s, const char *const tag) {
 
 			snprintf(response_code, 16, "400 Bad Request");
 			snprintf(content, 24, "<h1>400 Bad Request</h1>");
-			sprintf(content_length, "%i", 24);
+			content_length = 24;
 
 		} else {
 
@@ -262,7 +262,7 @@ int service_client_socket (const int s, const char *const tag) {
 
 				fclose(file);
 				sprintf(response_code, "200 OK");
-				sprintf(content_length, "%lu", size + 1);
+				content_length = size + 1;
 			
 			} else {
 
@@ -281,30 +281,30 @@ int service_client_socket (const int s, const char *const tag) {
 
 				sprintf(response_code, "404 Not Found");
 				sprintf(content, "<h1>404 Not Found</h1>");
-				sprintf(content_length, "%i", 23);
+				content_length = 23;
 			}
 		}
 		
 		//return_message = malloc(2000);
-		return_message = malloc(sizeof(char*) * (39 + strlen(content_type) + strlen(http_version) + strlen(response_code) + strlen(content_length) + strlen(content)));
+		return_message = malloc(sizeof(char*) * (39 + strlen(content_type) + strlen(http_version) + strlen(response_code) + 12 + strlen(content)));
 
 		if(!return_message){
 			free(request_method_name);
 			free(request_uri);			
 			free(http_version);
 			free(response_code);
-			free(content_length);
 			free(content);
 			perror("malloc");
 			return -1;
 		}
 
 
-		sprintf(return_message, "%s %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n%s", http_version, response_code, content_length, content_type, content);
+		sprintf(return_message, "%s %s\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", http_version, response_code, content_length, content_type);
 
 		printf("response:\n%s\n", return_message);
 
 		write(s, return_message, strlen(return_message) + 1);
+		write(s, content, content_length + 1);
 
 		if(write(s, return_message, strlen(return_message) + 1) != strlen(return_message) + 1){			
 			perror("write");
