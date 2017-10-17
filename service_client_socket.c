@@ -234,8 +234,7 @@ int service_client_socket (const int s, const char *const tag) {
 
 			}
 
-			fread(content, sizeof(char*), content_length + 1, fp);
-			//content++;
+			fread(content, sizeof(char*), content_length, fp);
 
 
 			sprintf(response_header, "%s %s\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", http_version, response_code, content_length, content_type);
@@ -249,7 +248,7 @@ int service_client_socket (const int s, const char *const tag) {
 				return -1;
 			}
 
-		 	if(write(s, content, content_length + 1) != content_length + 1){
+		 	if(write(s, content, content_length) != content_length){
 				perror("write");
 				free(content);
 				free(http_version);
