@@ -222,9 +222,9 @@ int service_client_socket (const int s, const char *const tag) {
 			rewind(fp);
 
 			if(text == 1){
-				content = malloc((content_length + 2) * sizeof(char*));
+				content = malloc((content_length + 1) * sizeof(char*));
 			} else {
-				content = malloc((content_length + 2) * sizeof(char*));
+				content = malloc((content_length + 1) * sizeof(char*));
 			}
 		
 			if(!content){
@@ -234,7 +234,7 @@ int service_client_socket (const int s, const char *const tag) {
 
 			}
 
-			fread(content, sizeof(char*), content_length + 2, fp);
+			fread(content, sizeof(char*), content_length + 1, fp);
 			//content++;
 
 
@@ -242,14 +242,14 @@ int service_client_socket (const int s, const char *const tag) {
 
 			printf("response:\n%s\n", response_header);
 
-			if(write(s, response_header, strlen(response_header) + 1) != strlen(response_header) + 1){			
+			if(write(s, response_header, strlen(response_header)) != strlen(response_header)){			
 				perror("write");
 				free(content);
 				free(http_version);
 				return -1;
 			}
 
-		 	if(write(s, content + 1, content_length + 1) != content_length + 1){
+		 	if(write(s, content, content_length + 1) != content_length + 1){
 				perror("write");
 				free(content);
 				free(http_version);
