@@ -136,7 +136,7 @@ int service_client_socket (const int s, const char *const tag) {
 		char* file_name;
 		char response_code[50];
 		char content_type[15];
-		char *content;
+		unsigned char *content;
 		size_t content_length = 0;
 
 		if(!server_error){
@@ -183,7 +183,11 @@ int service_client_socket (const int s, const char *const tag) {
 			printf("%s\n", file_name);
 
 			// set content type appropriately
-			if (strcmp(extension, ".jpg") == 0){
+			if (strcmp(extension, ".jpg") == 0 || strcmp(extension, ".jpeg") == 0){
+				sprintf(content_type, "image/jpeg");
+			} else if (strcmp(extension, ".png") == 0){
+				sprintf(content_type, "image/png");
+			} else if (strcmp(extension, ".gif") == 0){
 				sprintf(content_type, "image/jpeg");
 			} else {
 				sprintf(content_type, "text/html");
@@ -212,19 +216,15 @@ int service_client_socket (const int s, const char *const tag) {
 				sprintf(response_code, "200 OK");
 			}
 
-			if(!fp){
-				printf("\nhelloagain\n");
-			}
-
 			// get size of file
 			fseek(fp, 0L, SEEK_END);
 			content_length = ftell(fp);
 			rewind(fp);
 
 			if(text == 1){
-				content = malloc((content_length + 1) * sizeof(char*));
+				content = malloc((content_length + 2) * sizeof(char*));
 			} else {
-				content = malloc((content_length) * sizeof(char*));
+				content = malloc((content_length + 2) * sizeof(char*));
 			}
 		
 			if(!content){
@@ -234,18 +234,9 @@ int service_client_socket (const int s, const char *const tag) {
 
 			}
 
-			fread(content, sizeof(char*), content_length, fp);
-			
-			if(text == 1){			
-				content[content_length] = '\0';
-			}
+			fread(content, sizeof(char*), content_length + 2, fp);
+			//content++;
 
-			printf("%s\n", content);
-
-			/*if(read != content_length + 1){
-				perror("read");
-				free(http_version);
-			}*/
 
 			sprintf(response_header, "%s %s\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", http_version, response_code, content_length, content_type);
 
@@ -258,7 +249,7 @@ int service_client_socket (const int s, const char *const tag) {
 				return -1;
 			}
 
-		 	if(write(s, content, content_length) != content_length){
+		 	if(write(s, content + 1, content_length + 1) != content_length + 1){
 				perror("write");
 				free(content);
 				free(http_version);
