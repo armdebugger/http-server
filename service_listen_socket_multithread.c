@@ -72,8 +72,13 @@ int service_listen_socket(const int s) {
 				perror("pthread_create");
 				goto error_exit;
 			}
+
+			int error = pthread_detach(thread);
+				if(error != 0) {
+					fprintf(stderr, "pthread_detach failed %s, continuing\n", strerror (error));
+				}
+			}
 		}
-	}
 
 error_exit:
 	return -1;
