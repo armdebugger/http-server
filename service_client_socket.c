@@ -62,6 +62,8 @@ int service_client_socket (const int s, const char *const tag) {
 
 		int bad_request = 0;
 		int server_error = 0;
+		int not_implemented = 0;
+		int unsupported_protocol = 0;
 
 		/* find the first space, the end of the request method */
 		char *space = strchr(buffer, ' ');
@@ -79,9 +81,13 @@ int service_client_socket (const int s, const char *const tag) {
 				server_error = 1;
 			} else {
 
+				if(strcmp(request_method_name, "GET") != 0){
+					not_implemented = 1;
+				}
+
 				/* find the next element (uri) */
 				char *space = strchr(buffer + request_method_name_len + 1, ' ');
-			
+		
 				/* if there's no more info, bad request */
 				if(space == NULL){
 					bad_request = 1;
@@ -90,7 +96,7 @@ int service_client_socket (const int s, const char *const tag) {
 
 					/* get the length of the uri, extract */
 					request_uri_len = space - buffer - request_method_name_len - 1;				
-				
+			
 					/* check malloc didn't break */
 					if(extract(&request_uri, request_uri_len, buffer + request_method_name_len + 1) == -1){
 						server_error = 1;
@@ -109,22 +115,53 @@ int service_client_socket (const int s, const char *const tag) {
 							free(request_method_name);
 							free(request_uri);
 						} else {
-					
+				
 							http_version_len = space - buffer - request_uri_len - 4;
-					
+				
 							/* check malloc didn't break */
 							if(extract(&http_version, http_version_len, buffer + request_uri_len + request_method_name_len + 2) == -1){
-						
+					
 								server_error = 1;
 							}
-
-				
+			
 							/* workaround because the newline messes up my code */
 							for(int i = 0; i < strlen(http_version) + 1; i++){
 								if(http_version[i] == '\n'){								
 									http_version[i-1] = '\0';
 								}
 							}
+							
+							if(http_version[0] == 'H' && http_version[1] == 'T' && http_version[2] == 'T' && http_version[3] == 'P' && http_version[4] == '/'){
+
+								int point = 0;						
+								int i = 5;
+
+								char firstno[http_version_len];
+
+								while(!point){
+									if(http_version[i] == '.'){
+										point = 1;
+									} else if(http_version[i] == '\0'){
+										bad_request = 1;
+										point = 1;
+									} else {
+										firstno[i-5] = http_version[i];
+										i++;
+									}
+								}
+								
+
+								if(!((http_version[i] == '1' || http_version[i] == '0') && strcmp(firstno, "1") == 0 && http_version[i+1] == '\0' && !bad_request)){
+									unsupported_protocol = 1;
+								}
+							
+								
+
+							} else {
+								bad_request = 1;
+							}
+							
+
 						}
 					}
 				}
@@ -143,11 +180,23 @@ int service_client_socket (const int s, const char *const tag) {
 
 			sprintf(response_header, "%s ", http_version);
 
-			if(bad_request == 1){
-				// bad request (can this ever happen?), return 400
+			if(bad_request){
+				// bad request return 400
 				sprintf(response_code, "400 Bad Request");
 				file_name = malloc(sizeof(char*) * 9);				
 				sprintf(file_name, "400.html");
+
+			} else if (not_implemented){
+				// not implemented, return 501
+				sprintf(response_code, "501 Not Implemented");
+				file_name = malloc(sizeof(char*) * 9);
+				sprintf(file_name, "501.html");
+
+			} else if (unsupported_protocol){
+				// not implemented, return 501
+				sprintf(response_code, "505 Unsupported Protocol");
+				file_name = malloc(sizeof(char*) * 9);
+				sprintf(file_name, "505.html");
 
 			} else {
 
@@ -179,8 +228,6 @@ int service_client_socket (const int s, const char *const tag) {
 			} else {
 				sprintf(extension, "%s", ext);
 			}
-		
-			printf("%s\n", file_name);
 
 			// set content type appropriately
 			if (strcmp(extension, ".jpg") == 0 || strcmp(extension, ".jpeg") == 0){
@@ -207,11 +254,10 @@ int service_client_socket (const int s, const char *const tag) {
 
 			if(!fp){
 				// not found, return 404 page
-				printf("hello");
 				sprintf(response_code, "404 Not Found");
 				sprintf(content_type, "text/html");
 				fp = fopen("404.html", "r");
-			} else {
+			} else if (!not_implemented && !bad_request && !server_error && !unsupported_protocol){
 				// everything's good
 				sprintf(response_code, "200 OK");
 			}
@@ -237,7 +283,7 @@ int service_client_socket (const int s, const char *const tag) {
 			fread(content, sizeof(char*), content_length, fp);
 
 
-			sprintf(response_header, "%s %s\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", http_version, response_code, content_length, content_type);
+			sprintf(response_header, "HTTP/1.1 %s\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", response_code, content_length, content_type);
 
 			printf("response:\n%s\n", response_header);
 
