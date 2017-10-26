@@ -31,14 +31,15 @@ char *read_directory(char *directory){
 
 	dp = opendir(directory);
 	chdir(directory);
-	char *content = "empty";
-	size_t current_size = 6;
+	char *content = malloc(sizeof(char*) * 100);
+	sprintf(content, "");
+	size_t current_size = 100;
 
 	while((entry = readdir(dp)) != NULL){
 		lstat(entry->d_name, &statbuf);
 		if(strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0){
-
-			content = realloc(content, sizeof(char*) * (strlen(entry->d_name) + 7 + current_size));
+			
+			
 			char name[BUFSIZ];
 			if(S_ISDIR(statbuf.st_mode)){
 				sprintf(name, "dir   %s\n", entry->d_name);
@@ -46,8 +47,9 @@ char *read_directory(char *directory){
 				sprintf(name, "      %s\n", entry->d_name);
 			}		
 			
-			printf("%s\n", content);
-			
+			if(strlen(content) + strlen(name) + 1 > current_size){
+				content = realloc(content, sizeof(char*) * (strlen(content) + strlen(name) + 1));
+			}
 
 			strcat(content, name);
 			current_size = strlen(content) + 1;
