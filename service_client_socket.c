@@ -44,6 +44,8 @@ int service_client_socket (const int s, const char *const tag) {
 		char *request_method_name = NULL;
 		char *request_uri = NULL;
 		char *http_version = NULL;
+		char *middle = NULL;
+		char *bytes = NULL;
 
 		/* error flags */
 		int bad_request = 0;
@@ -56,6 +58,31 @@ int service_client_socket (const int s, const char *const tag) {
 		request_method_name = strtok(buffer, " ");
 		request_uri = strtok(NULL, " ");
 		http_version = strtok(NULL, "\r\n");
+		
+		int range_potential = 1;
+
+		while(range_potential){
+
+			middle = strtok(NULL, "R");
+
+			if(!middle){
+				range_potential = 0;
+			} else {
+				char temp[strlen(middle) + 1];
+				strcpy(temp, middle);
+				temp[12] = '\0';
+
+				printf("%s\n", temp);
+
+				if(strcmp(temp, "ange: bytes=") == 0){
+					middle = strtok(NULL, "=");
+					bytes = strtok(NULL, "\r\n");
+					range_potential = 0;
+				}
+			}
+		}
+
+		printf("%s\n", bytes);
 
 		//printf("|%s|%s|%s|\n", request_method_name, request_uri, http_version);
 
@@ -147,6 +174,8 @@ int service_client_socket (const int s, const char *const tag) {
 		} else {
 			sprintf(content_type, "text/html");
 		}
+
+		printf("%s\n", file_name);
 
 		/* open file with right method depending on text or binary */
 		FILE *fp;	
