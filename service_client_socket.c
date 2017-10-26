@@ -215,6 +215,7 @@ int service_client_socket (const int s, const char *const tag) {
 			}
 
 			fread(content, sizeof(char*), content_length, fp);
+			fclose(fp);
 		} else {
 			content = malloc((content_length + 1) * sizeof(char*));
 			
@@ -249,7 +250,7 @@ int service_client_socket (const int s, const char *const tag) {
 			}
 		}
 	
-
+		free(content);
 	}
   
 	/* bytes == 0: orderly close; bytes < 0: something went wrong */
