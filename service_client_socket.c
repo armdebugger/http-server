@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <time.h>
 
 #include <memory.h>
@@ -49,7 +50,7 @@ int service_client_socket (const int s, const char *const tag) {
 
 		/* error flags */
 		int bad_request = 0;
-		int server_error = 0;
+		//int server_error = 0;
 		int unsupported_protocol = 0;
 
 		/* method enum */
@@ -83,8 +84,6 @@ int service_client_socket (const int s, const char *const tag) {
 		}
 
 		printf("%s\n", bytes);
-
-		//printf("|%s|%s|%s|\n", request_method_name, request_uri, http_version);
 
 		if(!request_method_name || !request_uri || !http_version || request_uri[0] != '/'){
 			bad_request = 1;
@@ -125,10 +124,14 @@ int service_client_socket (const int s, const char *const tag) {
 		char response_code[50];
 		char content_type[15];
 		char file_name[file_length];
-		unsigned char *content;
+		char *content;
 		size_t content_length = 0;
 
+		sprintf(file_name, "%s", request_uri + 1);
+		
 		sprintf(response_header, "%s ", http_version);
+		struct stat sb;	
+		int file_status = stat(file_name, &sb);
 
 		if(bad_request){
 			// bad request return 400
@@ -146,12 +149,29 @@ int service_client_socket (const int s, const char *const tag) {
 			sprintf(response_code, "501 Not Implemented");
 			sprintf(file_name, "501.html");
 
+		} else if (file_status != 0){
+			
+			sprintf(response_code, "404 Not Found");
+			sprintf(file_name, "404.html");
 		} else {
-			// try and find the file
-			sprintf(file_name, "%s", request_uri + 1);
+			sprintf(response_code, "200 OK");
 		}
 
+		printf("%s\n", file_name);
 
+		/* open file with right method depending on text or binary */
+		FILE *fp;
+		int file = 1;
+		
+		if(S_ISDIR(sb.st_mode)){
+			file = 0;
+		} else if(S_ISREG(sb.st_mode)){
+			printf("FILE\n");
+		} else {
+			sprintf(response_code, "403 Forbidden");
+			sprintf(file_name, "403.html");
+		}
+	
 		char *ext;
 		ext = strchr(file_name, '.');
 
@@ -159,7 +179,7 @@ int service_client_socket (const int s, const char *const tag) {
 
 		if(!ext){
 			sprintf(extension, ".html");
-			strcat(file_name, ".html");
+			//strcat(file_name, ".html");
 		} else {
 			sprintf(extension, "%s", ext);
 		}
@@ -174,42 +194,42 @@ int service_client_socket (const int s, const char *const tag) {
 		} else {
 			sprintf(content_type, "text/html");
 		}
+	
+		if(file){
+			if(strcmp(content_type, "text/html") == 0){
+				fp = fopen(file_name, "r");
+			} else {
+				fp = fopen(file_name, "rb");
+			}
 
-		printf("%s\n", file_name);
+			// get size of file
+			fseek(fp, 0L, SEEK_END);
+			content_length = ftell(fp);
+			rewind(fp);
 
-		/* open file with right method depending on text or binary */
-		FILE *fp;	
+			content = malloc((content_length + 1) * sizeof(char*));
 
-		if(strcmp(content_type, "text/html") == 0){
-			fp = fopen(file_name, "r");
+			if(!content){
+				perror("malloc");
+				return -1;
+			}
+
+			fread(content, sizeof(char*), content_length, fp);
 		} else {
-			fp = fopen(file_name, "rb");
+			content = malloc((content_length + 1) * sizeof(char*));
+			
+			if(!content){
+				perror("malloc");
+				return -1;
+			}
+
+			sprintf(content, "folder\n");
+			content_length = 7;
 		}
 
-		if(!fp){
-			// not found, return 404 page
-			sprintf(response_code, "404 Not Found");
-			sprintf(content_type, "text/html");
-			fp = fopen("404.html", "r");
-		} else if (!(method_name == 0) && !bad_request && !server_error && !unsupported_protocol){
-			// everything's good
-			sprintf(response_code, "200 OK");
-		}
 
-		// get size of file
-		fseek(fp, 0L, SEEK_END);
-		content_length = ftell(fp);
-		rewind(fp);
 
-		content = malloc((content_length + 1) * sizeof(char*));
-
-		if(!content){
-			perror("malloc");
-			return -1;
-
-		}
-
-		fread(content, sizeof(char*), content_length, fp);
+		
 
 		sprintf(response_header, "HTTP/1.1 %s\r\nAccept-Ranges: bytes\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", response_code, content_length, content_type);
 
