@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <time.h>
-
+#include <dirent.h>
 #include <memory.h>
 #include <string.h>
 
@@ -23,6 +23,41 @@
 typedef enum{
 	NOT_SUPPORTED = 0, GET = 1, HEAD = 2
 }method;
+
+char *read_directory(char *directory){
+	DIR *dp;
+	struct dirent *entry;
+	struct stat statbuf;
+
+	dp = opendir(directory);
+	chdir(directory);
+	char *content = "empty";
+	size_t current_size = 6;
+
+	while((entry = readdir(dp)) != NULL){
+		lstat(entry->d_name, &statbuf);
+		if(strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0){
+
+			content = realloc(content, sizeof(char*) * (strlen(entry->d_name) + 7 + current_size));
+			char name[BUFSIZ];
+			if(S_ISDIR(statbuf.st_mode)){
+				sprintf(name, "dir   %s\n", entry->d_name);
+			} else {
+				sprintf(name, "      %s\n", entry->d_name);
+			}		
+			
+			printf("%s\n", content);
+			
+
+			strcat(content, name);
+			current_size = strlen(content) + 1;
+		
+		}
+	}
+
+	return content;
+}
+	
 
 int service_client_socket (const int s, const char *const tag) {
 	char buffer[buffer_size];
@@ -131,7 +166,7 @@ int service_client_socket (const int s, const char *const tag) {
 		
 		sprintf(response_header, "%s ", http_version);
 		struct stat sb;	
-		int file_status = stat(file_name, &sb);
+		int file_status = lstat(file_name, &sb);
 
 		if(bad_request){
 			// bad request return 400
@@ -217,15 +252,14 @@ int service_client_socket (const int s, const char *const tag) {
 			fread(content, sizeof(char*), content_length, fp);
 			fclose(fp);
 		} else {
-			content = malloc((content_length + 1) * sizeof(char*));
+			char *content = read_directory(file_name);
 			
 			if(!content){
 				perror("malloc");
 				return -1;
 			}
 
-			sprintf(content, "folder\n");
-			content_length = 7;
+			content_length = strlen(content) + 1;
 		}
 
 
