@@ -29,11 +29,29 @@ char *read_directory(char *directory){
 	struct dirent *entry;
 	struct stat statbuf;
 
+	char cwd[BUFSIZ];
+	getcwd(cwd, sizeof(cwd));
+
+	char updir[strlen(directory)];
+	int last_slash = 0;
+
+	if(strcmp("", directory) != 0){
+		for(int i = 0; i < strlen(directory); i++){
+			if(directory[i] == '/'){
+				last_slash = i;
+			}
+		}
+
+		strcpy(updir, directory);
+		updir[last_slash] = '\0';
+		printf("up %s\n", updir);
+	}
+
 	dp = opendir(directory);
 	chdir(directory);
-	char *content = malloc(sizeof(char*) * 100);
-	sprintf(content, "");
-	size_t current_size = 100;
+	char *content = malloc(sizeof(char*) * (85 + strlen(directory)));
+	sprintf(content, "<!DOCTYPE html>\n<html>\n<body>\n<h1>%s</h1>\n<a href = \"..\">Up</a><br>\n", directory);
+	size_t current_size = 11 + strlen(directory);
 
 	while((entry = readdir(dp)) != NULL){
 		lstat(entry->d_name, &statbuf);
@@ -42,9 +60,9 @@ char *read_directory(char *directory){
 			
 			char name[BUFSIZ];
 			if(S_ISDIR(statbuf.st_mode)){
-				sprintf(name, "dir   %s\n", entry->d_name);
+				sprintf(name, "<b><a href = \"%s/%s\">%s</a></b><br>\n",directory, entry->d_name, entry->d_name);
 			} else {
-				sprintf(name, "      %s\n", entry->d_name);
+				sprintf(name, "<i><a href = \"%s\">%s</a></i><br>\n", entry->d_name, entry->d_name);
 			}		
 			
 			if(strlen(content) + strlen(name) + 1 > current_size){
@@ -57,6 +75,11 @@ char *read_directory(char *directory){
 		}
 	}
 
+	strcat(content, "</ul></body>\n</html>");
+
+	closedir(dp);
+	chdir(cwd);
+	free(entry);
 	return content;
 }
 	
@@ -110,7 +133,7 @@ int service_client_socket (const int s, const char *const tag) {
 				strcpy(temp, middle);
 				temp[12] = '\0';
 
-				printf("%s\n", temp);
+				//printf("%s\n", temp);
 
 				if(strcmp(temp, "ange: bytes=") == 0){
 					middle = strtok(NULL, "=");
@@ -120,7 +143,7 @@ int service_client_socket (const int s, const char *const tag) {
 			}
 		}
 
-		printf("%s\n", bytes);
+		//printf("%s\n", bytes);
 
 		if(!request_method_name || !request_uri || !http_version || request_uri[0] != '/'){
 			bad_request = 1;
@@ -165,10 +188,13 @@ int service_client_socket (const int s, const char *const tag) {
 		size_t content_length = 0;
 
 		sprintf(file_name, "%s", request_uri + 1);
+
+		printf("%s\n", file_name);
 		
-		sprintf(response_header, "%s ", http_version);
 		struct stat sb;	
 		int file_status = lstat(file_name, &sb);
+
+		printf("file status: %i\n", file_status);
 
 		if(bad_request){
 			// bad request return 400
@@ -194,21 +220,24 @@ int service_client_socket (const int s, const char *const tag) {
 			sprintf(response_code, "200 OK");
 		}
 
-		printf("%s\n", file_name);
+		printf("file name: %s\n", file_name);
 
 		/* open file with right method depending on text or binary */
 		FILE *fp;
 		int file = 1;
 		
-		if(S_ISDIR(sb.st_mode)){
-			file = 0;
-		} else if(S_ISREG(sb.st_mode)){
-			printf("FILE\n");
-		} else {
-			sprintf(response_code, "403 Forbidden");
-			sprintf(file_name, "403.html");
+		if(file_status == 0){
+			if(S_ISDIR(sb.st_mode)){
+				printf("folder!!!!\n");
+				file = 0;
+			} else if(S_ISREG(sb.st_mode)){
+				printf("FILE\n");
+			} else {
+				sprintf(response_code, "403 Forbidden");
+				sprintf(file_name, "403.html");
+			}
 		}
-	
+
 		char *ext;
 		ext = strchr(file_name, '.');
 
@@ -232,7 +261,7 @@ int service_client_socket (const int s, const char *const tag) {
 			sprintf(content_type, "text/html");
 		}
 	
-		if(file){
+		if(file == 1){
 			if(strcmp(content_type, "text/html") == 0){
 				fp = fopen(file_name, "r");
 			} else {
@@ -254,7 +283,7 @@ int service_client_socket (const int s, const char *const tag) {
 			fread(content, sizeof(char*), content_length, fp);
 			fclose(fp);
 		} else {
-			char *content = read_directory(file_name);
+			content = read_directory(file_name);
 			
 			if(!content){
 				perror("malloc");
@@ -264,13 +293,9 @@ int service_client_socket (const int s, const char *const tag) {
 			content_length = strlen(content) + 1;
 		}
 
-
-
-		
-
 		sprintf(response_header, "HTTP/1.1 %s\r\nAccept-Ranges: bytes\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", response_code, content_length, content_type);
 
-		printf("response:\n%s\n", response_header);
+		printf("response:\n%s", response_header);
 
 		if(write(s, response_header, strlen(response_header)) != strlen(response_header)){			
 			perror("write");
@@ -285,7 +310,7 @@ int service_client_socket (const int s, const char *const tag) {
 				return -1;
 			}
 		}
-	
+		
 		free(content);
 	}
   
