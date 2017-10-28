@@ -35,13 +35,13 @@ char *read_directory(char *directory){
 	char updir[strlen(directory)];
 	int last_slash = 0;
 
-	if(strcmp("", directory) != 0){
+	if(strcmp(".", directory) != 0){
 		for(int i = 0; i < strlen(directory); i++){
 			if(directory[i] == '/'){
 				last_slash = i;
 			}
 		}
-
+		printf("%i\n", last_slash);
 		strcpy(updir, directory);
 		updir[last_slash] = '\0';
 		printf("up %s\n", updir);
@@ -49,8 +49,14 @@ char *read_directory(char *directory){
 
 	dp = opendir(directory);
 	chdir(directory);
+
 	char *content = malloc(sizeof(char*) * (85 + strlen(directory)));
-	sprintf(content, "<!DOCTYPE html>\n<html>\n<body>\n<h1>%s</h1>\n<a href = \"..\">Up</a><br>\n", directory);
+	if(strcmp(".", directory) != 0){
+		sprintf(content, "<!DOCTYPE html>\n<html>\n<body>\n<h1>index/%s</h1>\n<a href = \"/%s\">Up</a><br>\n", directory, updir);
+	} else {
+		sprintf(content, "<!DOCTYPE html>\n<html>\n<body>\n<h1>index</h1>\n");
+	}
+
 	size_t current_size = 11 + strlen(directory);
 
 	while((entry = readdir(dp)) != NULL){
@@ -60,9 +66,9 @@ char *read_directory(char *directory){
 			
 			char name[BUFSIZ];
 			if(S_ISDIR(statbuf.st_mode)){
-				sprintf(name, "<b><a href = \"%s/%s\">%s</a></b><br>\n",directory, entry->d_name, entry->d_name);
+				sprintf(name, "<b><a href = \"%s/%s\">%s</a></b><br>\n", directory, entry->d_name, entry->d_name);
 			} else {
-				sprintf(name, "<i><a href = \"%s\">%s</a></i><br>\n", entry->d_name, entry->d_name);
+				sprintf(name, "<i><a href = \"%s/%s\">%s</a></i><br>\n", directory, entry->d_name, entry->d_name);
 			}		
 			
 			if(strlen(content) + strlen(name) + 1 > current_size){
@@ -88,10 +94,7 @@ int service_client_socket (const int s, const char *const tag) {
 	char buffer[buffer_size];
 	size_t bytes;
 
-	//time_t t = time(NULL);
-	//struct tm tm = *localtime(&t);
-
-  printf ("new connection from %s\n", tag);
+	printf ("new connection from %s\n", tag);
 
 	while ((bytes = read (s, buffer, buffer_size - 1)) > 0) {
     
@@ -105,8 +108,6 @@ int service_client_socket (const int s, const char *const tag) {
 		char *request_method_name = NULL;
 		char *request_uri = NULL;
 		char *http_version = NULL;
-		char *middle = NULL;
-		char *bytes = NULL;
 
 		/* error flags */
 		int bad_request = 0;
@@ -119,31 +120,13 @@ int service_client_socket (const int s, const char *const tag) {
 		request_method_name = strtok(buffer, " ");
 		request_uri = strtok(NULL, " ");
 		http_version = strtok(NULL, "\r\n");
-		
-		int range_potential = 1;
 
-		while(range_potential){
+		char *header = NULL;
 
-			middle = strtok(NULL, "R");
-
-			if(!middle){
-				range_potential = 0;
-			} else {
-				char temp[strlen(middle) + 1];
-				strcpy(temp, middle);
-				temp[12] = '\0';
-
-				//printf("%s\n", temp);
-
-				if(strcmp(temp, "ange: bytes=") == 0){
-					middle = strtok(NULL, "=");
-					bytes = strtok(NULL, "\r\n");
-					range_potential = 0;
-				}
-			}
+		//printf("fields\n");
+		while((header = strtok(NULL, "\r\n")) != NULL){
+			//printf("	%s\n", header);
 		}
-
-		//printf("%s\n", bytes);
 
 		if(!request_method_name || !request_uri || !http_version || request_uri[0] != '/'){
 			bad_request = 1;
@@ -167,10 +150,6 @@ int service_client_socket (const int s, const char *const tag) {
 			} else if (strcmp(request_method_name, "HEAD") == 0){
 				method_name = 2;
 			}
-
-			if(strcmp(request_uri, "/") == 0){
-				sprintf(request_uri, "/index.html");
-			}
 		}
 
 		int file_length = 8;
@@ -186,15 +165,22 @@ int service_client_socket (const int s, const char *const tag) {
 		char file_name[file_length];
 		char *content;
 		size_t content_length = 0;
-
-		sprintf(file_name, "%s", request_uri + 1);
-
-		printf("%s\n", file_name);
 		
 		struct stat sb;	
-		int file_status = lstat(file_name, &sb);
+		int file_status = -1;
 
-		printf("file status: %i\n", file_status);
+		if(strcmp(request_uri, "/") == 0){
+			if(lstat("index.html", &sb) != 0){
+				sprintf(file_name, ".");
+			} else {
+				sprintf(file_name, "index.html");
+			}
+			
+			file_status = 0;
+		} else {
+			sprintf(file_name, "%s", request_uri + 1);
+			file_status = lstat(file_name, &sb);
+		}
 
 		if(bad_request){
 			// bad request return 400
@@ -213,7 +199,7 @@ int service_client_socket (const int s, const char *const tag) {
 			sprintf(file_name, "501.html");
 
 		} else if (file_status != 0){
-			
+			// not found, return 404
 			sprintf(response_code, "404 Not Found");
 			sprintf(file_name, "404.html");
 		} else {
@@ -221,18 +207,14 @@ int service_client_socket (const int s, const char *const tag) {
 		}
 
 		printf("file name: %s\n", file_name);
-
-		/* open file with right method depending on text or binary */
+		
 		FILE *fp;
 		int file = 1;
-		
+
 		if(file_status == 0){
-			if(S_ISDIR(sb.st_mode)){
-				printf("folder!!!!\n");
+			if(strcmp(file_name, ".") == 0 || S_ISDIR(sb.st_mode)){
 				file = 0;
-			} else if(S_ISREG(sb.st_mode)){
-				printf("FILE\n");
-			} else {
+			} else if(!S_ISREG(sb.st_mode)){
 				sprintf(response_code, "403 Forbidden");
 				sprintf(file_name, "403.html");
 			}
@@ -256,13 +238,14 @@ int service_client_socket (const int s, const char *const tag) {
 		} else if (strcmp(extension, ".png") == 0){
 			sprintf(content_type, "image/png");
 		} else if (strcmp(extension, ".gif") == 0){
-			sprintf(content_type, "image/jpeg");
+			sprintf(content_type, "image/gif");
 		} else {
 			sprintf(content_type, "text/html");
 		}
 	
 		if(file == 1){
 			if(strcmp(content_type, "text/html") == 0){
+				printf("%s\n", file_name);
 				fp = fopen(file_name, "r");
 			} else {
 				fp = fopen(file_name, "rb");
