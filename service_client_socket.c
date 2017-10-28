@@ -355,7 +355,6 @@ int service_client_socket (const int s, const char *const tag) {
 				if(tokens[0] == ' '){
 					tokens++;
 				}
-				printf("%s\n", tokens);
 
 				for(int j = 0; j < strlen(tokens); j++){
 					if(tokens[j] == '-'){
@@ -368,8 +367,6 @@ int service_client_socket (const int s, const char *const tag) {
 						char b[strlen(tokens) - j];
 						strcpy(b, tokens + j + 1);
 						markers[i][1] = atoi(b);
-
-						printf("%i,%i\n", markers[i][0], markers[i][1]);
 					}
 				}
 	
@@ -420,9 +417,13 @@ int service_client_socket (const int s, const char *const tag) {
 				strncpy(trimmed_content, &content[markers[0][0]], markers[0][1] - markers [0][0] + 1);
 				free(content);
 				content = trimmed_content;
-				
 
-				content_length = markers[0][1] - markers [0][0] + 1;
+				int byte_count = markers[0][1] - markers [0][0] + 1;
+
+				sprintf(response_header, "HTTP/1.1 %s\r\nAccept-Ranges: bytes\r\nContent-Range: bytes %i-%i/%zu\r\nContent-Length: %i\r\nContent-Type: %s\r\n\r\n", response_code, markers[0][0], markers[0][1], content_length, byte_count, content_type);
+
+				content_length = byte_count;
+
 
 			} else {
 
@@ -430,16 +431,30 @@ int service_client_socket (const int s, const char *const tag) {
 				strcpy(trimmed_content, "--3d6b6a416f9b5\r\n");
 		
 				for(int j = 0; j < ranges; j++){
-					trimmed_content = realloc(trimmed_content, sizeof(char*) * (strlen(trimmed_content) + 21 + (markers[j][1] - markers[j][0] + 1)));
-					strncpy(trimmed_content, &content[markers[j][0]], (markers[j][1] - markers[j][0] + 1));
+
+					int byte_count = markers[j][1] - markers[j][0] + 1;
+
+					char range_header[100];
+					sprintf(range_header, "Content-Type: %s\r\nContent-Range: bytes %i-%i/%zu\r\n", content_type, markers[j][0], markers[j][1], content_length);
+
+					char *bigger_trim = calloc(strlen(trimmed_content) + strlen(range_header) + 50 + byte_count, sizeof(char*));
+					strcpy(bigger_trim, trimmed_content);
+					free(trimmed_content);
+					trimmed_content = bigger_trim;
+					strcat(trimmed_content, range_header);
+
+					char *range_content = calloc((byte_count + 1), sizeof(char*));
+					strncpy(range_content, &content[markers[j][0]], byte_count);
+					strcat(trimmed_content, range_content);
+					free(range_content);
 					strcat(trimmed_content, "\r\n--3d6b6a416f9b5\r\n");
 				}
 
 				free(content);
 				content = trimmed_content;
+				content_length = strlen(content);			
 
-
-				sprintf(response_header, "HTTP/1.1 %s\r\nAccept-Ranges:bytes\r\nContent-Length: %lu\r\nContent-Type: multipart/byteranges; boundary=3d6b6a416f9b5\r\n\r\n", response_code, strlen(content));
+				sprintf(response_header, "HTTP/1.1 %s\r\nAccept-Ranges:bytes\r\nContent-Length: %lu\r\nContent-Type: multipart/byteranges; boundary=3d6b6a416f9b5\r\n\r\n", response_code, content_length);
 			}
 
 		}
