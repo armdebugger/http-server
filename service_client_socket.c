@@ -25,6 +25,27 @@ typedef enum{
 	NOT_SUPPORTED = 0, GET = 1, HEAD = 2
 }method;
 
+typedef struct{
+	int a;
+	int b;
+}byte_markers;
+
+byte_markers *get_markers(char *range){
+		
+	byte_markers *markers = malloc(sizeof(byte_markers));
+
+	range = strtok(range, "-");
+	printf("%s\n", range);
+	markers->a = atoi(range);
+	range = strtok(NULL, "-");
+	printf("%s\n", range);
+	markers->b = atoi(range);
+	
+	return markers;
+
+}
+
+
 /* function to produce html for items within a directory */
 char *read_directory(char *directory){
 	
@@ -96,12 +117,12 @@ char *read_directory(char *directory){
 	/* finish off the html */
 	strcat(content, "</body>\n</html>");
 
+	/* return to the original directory */
 	closedir(dp);
 	chdir(cwd);
 	free(entry);
 	return content;
 }
-	
 
 int service_client_socket (const int s, const char *const tag) {
 	char buffer[buffer_size];
@@ -121,6 +142,7 @@ int service_client_socket (const int s, const char *const tag) {
 		char *request_method_name = NULL;
 		char *request_uri = NULL;
 		char *http_version = NULL;
+		char *byte_range = NULL;
 
 		/* error flags */
 		int bad_request = 0;
@@ -135,10 +157,29 @@ int service_client_socket (const int s, const char *const tag) {
 		http_version = strtok(NULL, "\r\n");
 
 		char *header = NULL;
+		int byte_range_yes = 0;
 
-		//printf("fields\n");
 		while((header = strtok(NULL, "\r\n")) != NULL){
-			//printf("	%s\n", header);
+			if(strncmp(header, "Range: bytes=", 13) == 0){
+				 byte_range = malloc(sizeof(char*) * (strlen(header) + 1));
+				 strcpy(byte_range, header);
+				 byte_range_yes = 1;
+			}
+
+		}
+
+		int byte_length = 1;
+
+		if(byte_range_yes){
+			byte_length = strlen(byte_range) - 12;
+		}
+
+		char byte_ranges[byte_length];
+
+		/* get rid of the malloc'd string and get just the numbers */
+		if(byte_range_yes){
+			strcpy(byte_ranges, byte_range + 13);
+			free(byte_range);
 		}
 
 		if(!request_method_name || !request_uri || !http_version || request_uri[0] != '/'){
@@ -216,10 +257,9 @@ int service_client_socket (const int s, const char *const tag) {
 			sprintf(response_code, "404 Not Found");
 			sprintf(file_name, "404.html");
 		} else {
+			// everything's ok, return 200
 			sprintf(response_code, "200 OK");
 		}
-
-		printf("file name: %s\n", file_name);
 		
 		FILE *fp;
 		int file = 1;
@@ -289,6 +329,57 @@ int service_client_socket (const int s, const char *const tag) {
 
 			content_length = strlen(content) + 1;
 		}
+
+		/* do byte range stuff */
+		if(byte_range_yes){
+			
+			char *tokens = byte_ranges;
+			int ranges = 1;
+
+			for(int i = 0; i < strlen(byte_ranges); i++){
+				if(byte_ranges[i] == ','){
+					ranges++;
+				}
+			}		
+
+			int markers[ranges][2];
+			int i = 0;
+
+			while((tokens = strtok(tokens, ",")) != NULL){
+				
+				if(tokens[0] == ' '){
+					tokens++;
+				}
+				printf("%s\n", tokens);
+
+				for(int j = 0; j < strlen(tokens); j++){
+					if(tokens[j] == '-'){
+
+						char a[j];
+						strcpy(a, tokens);
+						a[j] = '\0';
+						markers[i][0] = atoi(a);		
+
+						char b[strlen(tokens) - j];
+						strcpy(b, tokens + j + 1);
+						markers[i][1] = atoi(b);
+
+						printf("%i,%i\n", markers[i][0], markers[i][1]);
+					}
+				}
+	
+				i++;
+				tokens = NULL;
+			}
+
+
+			for(int j = 0; j < ranges; j++){
+				char *trimmed_content = calloc(markers[j][1] - markers[j][0] + 1, sizeof(char*));
+				strncpy(trimmed_content, &content[markers[j][0]], markers[j][1] - markers[j][0]);
+				printf("%s\n", trimmed_content);
+			
+			}
+		}	
 
 		sprintf(response_header, "HTTP/1.1 %s\r\nAccept-Ranges: bytes\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", response_code, content_length, content_type);
 
