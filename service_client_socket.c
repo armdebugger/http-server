@@ -20,18 +20,24 @@
 /* why can I not use const size_t here? */
 #define buffer_size 1024
 
+/* enum for the different request methods supported */
 typedef enum{
 	NOT_SUPPORTED = 0, GET = 1, HEAD = 2
 }method;
 
+/* function to produce html for items within a directory */
 char *read_directory(char *directory){
+	
+	/* create various structures to hold info about the diretory */
 	DIR *dp;
 	struct dirent *entry;
 	struct stat statbuf;
 
+	/* store the current working directory for later */
 	char cwd[BUFSIZ];
 	getcwd(cwd, sizeof(cwd));
 
+	/* find the parent of the current directory */
 	char updir[strlen(directory)];
 	int last_slash = 0;
 
@@ -44,12 +50,13 @@ char *read_directory(char *directory){
 		printf("%i\n", last_slash);
 		strcpy(updir, directory);
 		updir[last_slash] = '\0';
-		printf("up %s\n", updir);
 	}
 
+	/* open the directory and change to it */
 	dp = opendir(directory);
 	chdir(directory);
 
+	/* first write the top of the html (including up button if not in index */
 	char *content = malloc(sizeof(char*) * (85 + strlen(directory)));
 	if(strcmp(".", directory) != 0){
 		sprintf(content, "<!DOCTYPE html>\n<html>\n<body>\n<h1>index/%s</h1>\n<a href = \"/%s\">Up</a><br>\n", directory, updir);
@@ -57,31 +64,37 @@ char *read_directory(char *directory){
 		sprintf(content, "<!DOCTYPE html>\n<html>\n<body>\n<h1>index</h1>\n");
 	}
 
-	size_t current_size = 11 + strlen(directory);
+	size_t current_size = 15 + strlen(directory);
 
+	/* iterate through all the files in the directory */
 	while((entry = readdir(dp)) != NULL){
 		lstat(entry->d_name, &statbuf);
+
+		/* ignore . and .. */		
 		if(strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0){
 			
-			
+			/* write appropriate html for folders (bold) and files (italics) */
 			char name[BUFSIZ];
 			if(S_ISDIR(statbuf.st_mode)){
-				sprintf(name, "<b><a href = \"%s/%s\">%s</a></b><br>\n", directory, entry->d_name, entry->d_name);
+				sprintf(name, "<b><a href = \"%s/%s\">/%s</a></b><br>\n", directory, entry->d_name, entry->d_name);
 			} else {
 				sprintf(name, "<i><a href = \"%s/%s\">%s</a></i><br>\n", directory, entry->d_name, entry->d_name);
 			}		
 			
+			/* reallocate size in the buffer */
 			if(strlen(content) + strlen(name) + 1 > current_size){
 				content = realloc(content, sizeof(char*) * (strlen(content) + strlen(name) + 1));
 			}
-
+	
+			/* add to the buffer */
 			strcat(content, name);
 			current_size = strlen(content) + 1;
 		
 		}
 	}
 
-	strcat(content, "</ul></body>\n</html>");
+	/* finish off the html */
+	strcat(content, "</body>\n</html>");
 
 	closedir(dp);
 	chdir(cwd);
@@ -227,7 +240,6 @@ int service_client_socket (const int s, const char *const tag) {
 
 		if(!ext){
 			sprintf(extension, ".html");
-			//strcat(file_name, ".html");
 		} else {
 			sprintf(extension, "%s", ext);
 		}
@@ -239,8 +251,10 @@ int service_client_socket (const int s, const char *const tag) {
 			sprintf(content_type, "image/png");
 		} else if (strcmp(extension, ".gif") == 0){
 			sprintf(content_type, "image/gif");
-		} else {
+		} else if(strcmp(extension, ".html") == 0 || file == 0){
 			sprintf(content_type, "text/html");
+		} else {
+			sprintf(content_type, "text/plain");
 		}
 	
 		if(file == 1){
