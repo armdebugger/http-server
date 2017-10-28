@@ -30,22 +30,6 @@ typedef struct{
 	int b;
 }byte_markers;
 
-byte_markers *get_markers(char *range){
-		
-	byte_markers *markers = malloc(sizeof(byte_markers));
-
-	range = strtok(range, "-");
-	printf("%s\n", range);
-	markers->a = atoi(range);
-	range = strtok(NULL, "-");
-	printf("%s\n", range);
-	markers->b = atoi(range);
-	
-	return markers;
-
-}
-
-
 /* function to produce html for items within a directory */
 char *read_directory(char *directory){
 	
@@ -79,6 +63,11 @@ char *read_directory(char *directory){
 
 	/* first write the top of the html (including up button if not in index */
 	char *content = malloc(sizeof(char*) * (85 + strlen(directory)));
+
+	if(!content){
+		return NULL;
+	}
+
 	if(strcmp(".", directory) != 0){
 		sprintf(content, "<!DOCTYPE html>\n<html>\n<body>\n<h1>index/%s</h1>\n<a href = \"/%s\">Up</a><br>\n", directory, updir);
 	} else {
@@ -105,6 +94,11 @@ char *read_directory(char *directory){
 			/* reallocate size in the buffer */
 			if(strlen(content) + strlen(name) + 1 > current_size){
 				content = realloc(content, sizeof(char*) * (strlen(content) + strlen(name) + 1));
+
+				if(!content){
+					return NULL;
+				}
+
 			}
 	
 			/* add to the buffer */
@@ -161,9 +155,15 @@ int service_client_socket (const int s, const char *const tag) {
 
 		while((header = strtok(NULL, "\r\n")) != NULL){
 			if(strncmp(header, "Range: bytes=", 13) == 0){
-				 byte_range = malloc(sizeof(char*) * (strlen(header) + 1));
-				 strcpy(byte_range, header);
-				 byte_range_yes = 1;
+				byte_range = malloc(sizeof(char*) * (strlen(header) + 1));
+
+				if(!byte_range){
+					perror("malloc");
+					return -1;
+				}
+
+				strcpy(byte_range, header);
+				byte_range_yes = 1;
 			}
 
 		}
@@ -413,7 +413,14 @@ int service_client_socket (const int s, const char *const tag) {
 			
 			if(ranges == 1){
 
-				char *trimmed_content = malloc(sizeof(char*) * (markers[0][1] - markers [0][0] + 1));
+				char *trimmed_content = calloc(markers[0][1] - markers [0][0] + 1, sizeof(char*));
+
+				if(!trimmed_content){
+						perror("malloc");
+						free(content);
+						return -1;
+					}
+
 				strncpy(trimmed_content, &content[markers[0][0]], markers[0][1] - markers [0][0] + 1);
 				free(content);
 				content = trimmed_content;
@@ -437,13 +444,27 @@ int service_client_socket (const int s, const char *const tag) {
 					char range_header[100];
 					sprintf(range_header, "Content-Type: %s\r\nContent-Range: bytes %i-%i/%zu\r\n", content_type, markers[j][0], markers[j][1], content_length);
 
-					char *bigger_trim = calloc(strlen(trimmed_content) + strlen(range_header) + 50 + byte_count, sizeof(char*));
+					char *bigger_trim = calloc(strlen(trimmed_content) + strlen(range_header) + byte_count, sizeof(char*));
+
+					if(!bigger_trim){
+						perror("malloc");
+						free(content);
+						return -1;
+					}
+
 					strcpy(bigger_trim, trimmed_content);
 					free(trimmed_content);
 					trimmed_content = bigger_trim;
 					strcat(trimmed_content, range_header);
 
 					char *range_content = calloc((byte_count + 1), sizeof(char*));
+
+					if(!range_content){
+						perror("malloc");
+						free(content);
+						return -1;
+					}
+
 					strncpy(range_content, &content[markers[j][0]], byte_count);
 					strcat(trimmed_content, range_content);
 					free(range_content);
