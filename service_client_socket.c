@@ -330,19 +330,24 @@ int service_client_socket (const int s, const char *const tag) {
 			content_length = strlen(content) + 1;
 		}
 
-		/* do byte range stuff */
+		int requested_range_not_satisfiable = 0;
+		int ranges = 1;
+					
 		if(byte_range_yes){
-			
-			char *tokens = byte_ranges;
-			int ranges = 1;
 
 			for(int i = 0; i < strlen(byte_ranges); i++){
 				if(byte_ranges[i] == ','){
 					ranges++;
 				}
-			}		
+			}	
+		}
 
-			int markers[ranges][2];
+		int markers[ranges][2];
+		
+		/* do byte range stuff */
+		if(byte_range_yes){	
+			
+			char *tokens = byte_ranges;
 			int i = 0;
 
 			while((tokens = strtok(tokens, ",")) != NULL){
@@ -372,16 +377,72 @@ int service_client_socket (const int s, const char *const tag) {
 				tokens = NULL;
 			}
 
-
 			for(int j = 0; j < ranges; j++){
-				char *trimmed_content = calloc(markers[j][1] - markers[j][0] + 1, sizeof(char*));
-				strncpy(trimmed_content, &content[markers[j][0]], markers[j][1] - markers[j][0]);
-				printf("%s\n", trimmed_content);
-			
-			}
-		}	
 
-		sprintf(response_header, "HTTP/1.1 %s\r\nAccept-Ranges: bytes\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", response_code, content_length, content_type);
+				if(markers[j][0] > strlen(content) || markers[j][1] > strlen(content)){
+					requested_range_not_satisfiable = 1;
+				}
+			}
+			
+			if(requested_range_not_satisfiable){
+				sprintf(response_code, "416 Requested Range Not Satisfiable");
+				sprintf(content_type, "text/html");
+				FILE *fp = fopen("416.html", "r");
+
+				fseek(fp, 0L, SEEK_END);
+				content_length = ftell(fp);
+				rewind(fp);
+
+				content = realloc(content, (content_length + 1) * sizeof(char*));
+
+				if(!content){
+					perror("malloc");
+					return -1;
+				}
+
+				fread(content, sizeof(char*), content_length, fp);
+				fclose(fp);
+			} else {
+				sprintf(response_code, "206 Partial Content");
+			}
+			
+
+
+		}
+
+		if(!byte_range_yes || requested_range_not_satisfiable){
+			sprintf(response_header, "HTTP/1.1 %s\r\nAccept-Ranges: bytes\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", response_code, content_length, content_type);
+		} else {
+			
+			if(ranges == 1){
+
+				char *trimmed_content = malloc(sizeof(char*) * (markers[0][1] - markers [0][0] + 1));
+				strncpy(trimmed_content, &content[markers[0][0]], markers[0][1] - markers [0][0] + 1);
+				free(content);
+				content = trimmed_content;
+				
+
+				content_length = markers[0][1] - markers [0][0] + 1;
+
+			} else {
+
+				char *trimmed_content = malloc(sizeof(char*) * 17);
+				strcpy(trimmed_content, "--3d6b6a416f9b5\r\n");
+		
+				for(int j = 0; j < ranges; j++){
+					trimmed_content = realloc(trimmed_content, sizeof(char*) * (strlen(trimmed_content) + 21 + (markers[j][1] - markers[j][0] + 1)));
+					strncpy(trimmed_content, &content[markers[j][0]], (markers[j][1] - markers[j][0] + 1));
+					strcat(trimmed_content, "\r\n--3d6b6a416f9b5\r\n");
+				}
+
+				free(content);
+				content = trimmed_content;
+
+
+				sprintf(response_header, "HTTP/1.1 %s\r\nAccept-Ranges:bytes\r\nContent-Length: %lu\r\nContent-Type: multipart/byteranges; boundary=3d6b6a416f9b5\r\n\r\n", response_code, strlen(content));
+			}
+
+		}
 
 		printf("response:\n%s", response_header);
 
