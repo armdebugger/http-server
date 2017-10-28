@@ -223,6 +223,7 @@ int service_client_socket (const int s, const char *const tag) {
 		struct stat sb;	
 		int file_status = -1;
 
+		/* if an index page exists, serve it for a null uri*/
 		if(strcmp(request_uri, "/") == 0){
 			if(lstat("index.html", &sb) != 0){
 				sprintf(file_name, ".");
@@ -297,6 +298,7 @@ int service_client_socket (const int s, const char *const tag) {
 			sprintf(content_type, "text/plain");
 		}
 	
+		/* read file or generate directory page */
 		if(file == 1){
 			if(strcmp(content_type, "text/html") == 0){
 				printf("%s\n", file_name);
@@ -305,7 +307,7 @@ int service_client_socket (const int s, const char *const tag) {
 				fp = fopen(file_name, "rb");
 			}
 
-			// get size of file
+			/* get size of file */
 			fseek(fp, 0L, SEEK_END);
 			content_length = ftell(fp);
 			rewind(fp);
@@ -316,7 +318,8 @@ int service_client_socket (const int s, const char *const tag) {
 				perror("malloc");
 				return -1;
 			}
-
+		
+			/* read the file into the content buffer */
 			fread(content, sizeof(char*), content_length, fp);
 			fclose(fp);
 		} else {
@@ -333,6 +336,7 @@ int service_client_socket (const int s, const char *const tag) {
 		int requested_range_not_satisfiable = 0;
 		int ranges = 1;
 					
+		/* find out how many byteranges have been requested */
 		if(byte_range_yes){
 
 			for(int i = 0; i < strlen(byte_ranges); i++){
@@ -350,12 +354,14 @@ int service_client_socket (const int s, const char *const tag) {
 			char *tokens = byte_ranges;
 			int i = 0;
 
+			/* read each byterange declared */
 			while((tokens = strtok(tokens, ",")) != NULL){
 				
 				if(tokens[0] == ' '){
 					tokens++;
 				}
 
+				/* get the start and the end of the range */
 				for(int j = 0; j < strlen(tokens); j++){
 					if(tokens[j] == '-'){
 
@@ -374,6 +380,7 @@ int service_client_socket (const int s, const char *const tag) {
 				tokens = NULL;
 			}
 
+			/* check that the ranges are satisfiable */
 			for(int j = 0; j < ranges; j++){
 
 				if(markers[j][0] > strlen(content) || markers[j][1] > strlen(content)){
@@ -381,6 +388,7 @@ int service_client_socket (const int s, const char *const tag) {
 				}
 			}
 			
+			/* if not satisfiable return 416 error */
 			if(requested_range_not_satisfiable){
 				sprintf(response_code, "416 Requested Range Not Satisfiable");
 				sprintf(content_type, "text/html");
@@ -407,10 +415,12 @@ int service_client_socket (const int s, const char *const tag) {
 
 		}
 
+		/* different headers if byteranges are requested */
 		if(!byte_range_yes || requested_range_not_satisfiable){
 			sprintf(response_header, "HTTP/1.1 %s\r\nAccept-Ranges: bytes\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", response_code, content_length, content_type);
 		} else {
 			
+			/* different headers if multiple byteranges are requested */
 			if(ranges == 1){
 
 				char *trimmed_content = calloc(markers[0][1] - markers [0][0] + 1, sizeof(char*));
@@ -421,12 +431,15 @@ int service_client_socket (const int s, const char *const tag) {
 						return -1;
 					}
 
+				/* get the byterange requested */
 				strncpy(trimmed_content, &content[markers[0][0]], markers[0][1] - markers [0][0] + 1);
 				free(content);
 				content = trimmed_content;
 
+				/* how long the requested byterange is */
 				int byte_count = markers[0][1] - markers [0][0] + 1;
 
+				/* print the header with byterange headers */
 				sprintf(response_header, "HTTP/1.1 %s\r\nAccept-Ranges: bytes\r\nContent-Range: bytes %i-%i/%zu\r\nContent-Length: %i\r\nContent-Type: %s\r\n\r\n", response_code, markers[0][0], markers[0][1], content_length, byte_count, content_type);
 
 				content_length = byte_count;
@@ -435,15 +448,19 @@ int service_client_socket (const int s, const char *const tag) {
 			} else {
 
 				char *trimmed_content = malloc(sizeof(char*) * 17);
+
+				/* each byterange is surrounded by these tags */
 				strcpy(trimmed_content, "--3d6b6a416f9b5\r\n");
 		
 				for(int j = 0; j < ranges; j++){
 
 					int byte_count = markers[j][1] - markers[j][0] + 1;
 
+					/* each byterange gets its own header with length information */
 					char range_header[100];
 					sprintf(range_header, "Content-Type: %s\r\nContent-Range: bytes %i-%i/%zu\r\n", content_type, markers[j][0], markers[j][1], content_length);
 
+					/* allocate a bigger amount of content for the next byterange */
 					char *bigger_trim = calloc(strlen(trimmed_content) + strlen(range_header) + byte_count, sizeof(char*));
 
 					if(!bigger_trim){
@@ -456,7 +473,8 @@ int service_client_socket (const int s, const char *const tag) {
 					free(trimmed_content);
 					trimmed_content = bigger_trim;
 					strcat(trimmed_content, range_header);
-
+					
+					/* get the next byterange of content */
 					char *range_content = calloc((byte_count + 1), sizeof(char*));
 
 					if(!range_content){
@@ -471,10 +489,12 @@ int service_client_socket (const int s, const char *const tag) {
 					strcat(trimmed_content, "\r\n--3d6b6a416f9b5\r\n");
 				}
 
+				/* free the old content and use the new one with all the trimmings */
 				free(content);
 				content = trimmed_content;
 				content_length = strlen(content);			
 
+				/* print out the new repsponse header with overall length and tag information */
 				sprintf(response_header, "HTTP/1.1 %s\r\nAccept-Ranges:bytes\r\nContent-Length: %lu\r\nContent-Type: multipart/byteranges; boundary=3d6b6a416f9b5\r\n\r\n", response_code, content_length);
 			}
 
@@ -482,12 +502,14 @@ int service_client_socket (const int s, const char *const tag) {
 
 		printf("response:\n%s", response_header);
 
+		/* send the response header first */
 		if(write(s, response_header, strlen(response_header)) != strlen(response_header)){			
 			perror("write");
 			free(content);
 			return -1;
 		}
 
+		/* only need to send content if GET was requested */
 		if(method_name == GET){
 		 	if(write(s, content, content_length) != content_length){
 				perror("write");
