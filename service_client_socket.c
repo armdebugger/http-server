@@ -52,7 +52,7 @@ char *read_directory(char *directory){
 				last_slash = i;
 			}
 		}
-		printf("%i\n", last_slash);
+
 		strcpy(updir, directory);
 		updir[last_slash] = '\0';
 	}
@@ -240,23 +240,23 @@ int service_client_socket (const int s, const char *const tag) {
 		if(bad_request){
 			// bad request return 400
 			sprintf(response_code, "400 Bad Request");		
-			sprintf(file_name, "400.html");
+			sprintf(file_name, "errors/400.html");
 			method_name = 1;
 
 		} else if (unsupported_protocol){
 			// not implemented, return 501
 			sprintf(response_code, "505 Unsupported Protocol");
-			sprintf(file_name, "505.html");
+			sprintf(file_name, "errors/505.html");
 
 		} else if (method_name == 0){
 			// not implemented, return 501
 			sprintf(response_code, "501 Not Implemented");
-			sprintf(file_name, "501.html");
+			sprintf(file_name, "errors/501.html");
 
 		} else if (file_status != 0){
 			// not found, return 404
 			sprintf(response_code, "404 Not Found");
-			sprintf(file_name, "404.html");
+			sprintf(file_name, "errors/404.html");
 		} else {
 			// everything's ok, return 200
 			sprintf(response_code, "200 OK");
@@ -270,7 +270,7 @@ int service_client_socket (const int s, const char *const tag) {
 				file = 0;
 			} else if(!S_ISREG(sb.st_mode)){
 				sprintf(response_code, "403 Forbidden");
-				sprintf(file_name, "403.html");
+				sprintf(file_name, "errors/403.html");
 			}
 		}
 
@@ -301,7 +301,6 @@ int service_client_socket (const int s, const char *const tag) {
 		/* read file or generate directory page */
 		if(file == 1){
 			if(strcmp(content_type, "text/html") == 0){
-				printf("%s\n", file_name);
 				fp = fopen(file_name, "r");
 			} else {
 				fp = fopen(file_name, "rb");
@@ -392,7 +391,7 @@ int service_client_socket (const int s, const char *const tag) {
 			if(requested_range_not_satisfiable){
 				sprintf(response_code, "416 Requested Range Not Satisfiable");
 				sprintf(content_type, "text/html");
-				FILE *fp = fopen("416.html", "r");
+				FILE *fp = fopen("errors/416.html", "r");
 
 				fseek(fp, 0L, SEEK_END);
 				content_length = ftell(fp);
