@@ -1,4 +1,5 @@
-/* Based on code provided by Ian Batten for the Networks module, and some of Eike's lecture code */
+/* Based on code provided by Ian Batten from Canvas
+ * and some of Eike Ritter's lecture code from Operating Systems */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +26,7 @@
 volatile sig_atomic_t stop = 0;
 int error_code = 0;
 int socket_int;
+char *printable = NULL;
 
 /* tcb struct, contains address info for a client */
 typedef struct thread_control_block {
@@ -57,12 +59,17 @@ static void *client_thread(void *data) {
 	free(tcb_p);
 
 	assert(their_address_size == sizeof(their_address));
-	char *printable = make_printable_address (&(their_address),
+	printable = make_printable_address (&(their_address),
 				      their_address_size,
 				      buffer, sizeof (buffer));
 
-	(void)service_client_socket(client, printable);
+	char printable_new[strlen(printable) + 1];
+	strcpy(printable_new, printable);
 	free(printable);
+
+	(void)service_client_socket(client, printable_new);
+	//free(printable);
+	//printable = NULL;
 
 	pthread_exit(0);
 }
@@ -127,10 +134,9 @@ int service_listen_socket(const int s) {
 				free(tcb_p);
 				exit(1);
 			}
-
 		}
 	}
 
-return 0;
+	return 0;
 
 }

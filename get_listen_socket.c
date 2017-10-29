@@ -1,3 +1,5 @@
+/* based on code written by Ian Batten, provided on Canvas */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

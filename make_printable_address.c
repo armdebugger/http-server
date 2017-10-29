@@ -1,3 +1,6 @@
+/* code provided by Ian Batten on Canvas for generating a 
+ * printable address */
+
 #include <string.h>
 #include <arpa/inet.h>
 #include <stdio.h>

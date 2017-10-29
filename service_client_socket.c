@@ -1,3 +1,6 @@
+/* based on code provided by Ian Batten, modified to send
+ * HTTP responses to clients */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -17,7 +20,6 @@
 
 #include "service_client_socket.h"
 
-/* why can I not use const size_t here? */
 #define buffer_size 1024
 
 /* enum for the different request methods supported */
