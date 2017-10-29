@@ -27,11 +27,6 @@ typedef enum{
 	NOT_SUPPORTED = 0, GET = 1, HEAD = 2
 }method;
 
-typedef struct{
-	int a;
-	int b;
-}byte_markers;
-
 /* function to produce html for items within a directory */
 char *read_directory(char *directory){
 	
