@@ -379,7 +379,7 @@ int service_client_socket (const int s, const char *const tag) {
 			/* check that the ranges are satisfiable */
 			for(int j = 0; j < ranges; j++){
 
-				if(markers[j][0] > strlen(content) || markers[j][1] > strlen(content)){
+				if(markers[j][0] > strlen(content) || markers[j][1] > strlen(content) || markers[j][0] < 0 || markers[j][1] < 0){
 					requested_range_not_satisfiable = 1;
 				}
 			}

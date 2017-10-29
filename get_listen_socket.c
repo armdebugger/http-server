@@ -51,7 +51,7 @@ int get_listen_socket(const int port) {
 		return -1;
 	}
 
-	/* set the socket as listening for messages, 5 is the 'backlog' that nobody really understands*/
+	/* set the socket as listening for messages, 5 is the 'backlog' that nobody really understands */
 	if (listen(s, 5) != 0) {
 		perror("listen");
 		return -1;

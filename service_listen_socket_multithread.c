@@ -68,8 +68,6 @@ static void *client_thread(void *data) {
 	free(printable);
 
 	(void)service_client_socket(client, printable_new);
-	//free(printable);
-	//printable = NULL;
 
 	pthread_exit(0);
 }
