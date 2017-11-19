@@ -9,3 +9,6 @@ A makefile is provided which compiles the server using Clang with flags `-Wall -
 * Can serve text and image files
 * A null URI displays an index.html file if one is present or defaults to a directory view otherwise
 * Supports byte ranges
+
+## Acknowledgements
+The source code is based heavily on example code provided by [Ian Batten](https://www.batten.eu.org/~igb/), lecturer of the Networks course at the University of Birmingham.
